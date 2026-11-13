@@ -1,5 +1,9 @@
 import sys
 import yaml
+import subprocess
+import os
+
+MIN_ARGS_COUNT = 2
 
 
 def load_config(path: str) -> dict:
@@ -7,18 +11,21 @@ def load_config(path: str) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
             if not isinstance(config, dict):
-                raise ValueError("Конфигурационный файл должен содержать словарь.")
+                raise ValueError("Конфигурационный файл должен"
+                                 " содержать словарь.")
             return config
     except FileNotFoundError:
-        print(f"Ошибка: Файл конфигурации '{path}' не найден.", file=sys.stderr)
+        print(f"Ошибка: Файл конфигурации '{path}' не найден.",
+              file=sys.stderr)
         sys.exit(1)
     except yaml.YAMLError as e:
         print(
-            f"Ошибка: Невалидный формат YAML в файле '{path}': {e}", file=sys.stderr
-        )
+            f"Ошибка: Невалидный формат YAML в файле '{path}': {e}",
+            file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"Непредвиденная ошибка при чтении конфига: {e}", file=sys.stderr)
+        print(f"Непредвиденная ошибка при чтении конфига: {e}",
+              file=sys.stderr)
         sys.exit(1)
 
 
@@ -38,11 +45,13 @@ def load_test_graph(file_path: str) -> dict:
                 graph[pkg] = deps
         return graph
     except FileNotFoundError:
-        print(f"Ошибка: Тестовый файл графа '{file_path}' не найден.", file=sys.stderr)
+        print(f"Ошибка: Тестовый файл графа '{file_path}' не найден.",
+              file=sys.stderr)
         sys.exit(1)
 
 
-def fetch_dependencies(pkg: str, repo_url: str, test_mode: bool) -> list:
+def fetch_dependencies(pkg: str, repo_url: str,
+                       test_mode: bool) -> list:
     if test_mode:
         graph = load_test_graph(repo_url)
         return graph.get(pkg, [])
@@ -104,7 +113,8 @@ def compute_reverse_dependencies(graph: dict) -> dict:
     return reverse_graph
 
 
-def print_ascii_tree(pkg: str, graph: dict, prefix: str = "", visited: set = None):
+def print_ascii_tree(pkg: str, graph: dict, prefix: str = "",
+                     visited: set = None):
     if visited is None:
         visited = set()
     print(f"{prefix}{pkg}")
@@ -118,17 +128,37 @@ def print_ascii_tree(pkg: str, graph: dict, prefix: str = "", visited: set = Non
         print_ascii_tree(dep, graph, prefix + connector, visited.copy())
 
 
+def generate_graph_image(graph: dict, output_path: str):
+    dot_content = "digraph DependencyGraph {\n  node [shape=box, fontname=\"Arial\"];\n"
+    for pkg, deps in graph.items():
+        if not deps:
+            dot_content += f"\t{pkg};\n"
+        for dep in deps:
+            dot_content += f'\t"{pkg}" -> "{dep}";\n'
+    dot_content += "}\n"
+    dot_file = "graph.dot"
+    with open(dot_file, "w") as f:
+        f.write(dot_content)
+    try:
+        subprocess.run(["dot", "-Tpng", dot_file, "-o", output_path], check=True)
+        print(f"\n[Этап 5] Картина графа успешно создана и сохранена: {output_path}")
+    except (subprocess.SubprocessError, FileNotFoundError):
+        print(f"\n[Этап 5] Предупреждение: Утилита Graphviz (dot) не найдена в системе.")
+        print(f"Создан файл разметки '{dot_file}'." 
+              f"Установите graphviz (sudo apt install graphviz) для генерации PNG.")
+
+
+
+
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS_COUNT:
         print(
             "Использование: python src/main.py <path_to_config.yaml>",
             file=sys.stderr,
         )
         sys.exit(1)
-
     config_path = sys.argv[1]
     config = load_config(config_path)
-
     print("=== Параметры конфигурации ===")
     for key, value in config.items():
         print(f"{key}: {value}")
@@ -139,22 +169,19 @@ def main():
     max_depth = config.get("max_depth", 5)
     ascii_tree_enabled = config.get("ascii_tree", False)
     output_image = config.get("output_image", "graph.png")
-
     print(
-        f"\n[Stage 3] Построение графа зависимостей для '{pkg_name}' (макс. глубина:"
+        f"\n[Stage 3] Построение графа зависимостей для '{pkg_name}'"
+        f"(макс. глубина:"
         f" {max_depth})..."
     )
-
     dependency_graph = build_graph_bfs_recursive(
-        [pkg_name], repo_url, test_mode, max_depth, 1, set(), {}
+        [pkg_name], repo_url, test_mode, max_depth,
+        1, set(), {}
     )
-
     print(f"\n=== Граф прямых зависимостей [Этап 3] ===")
     for node, deps in dependency_graph.items():
         print(f"{node} -> {deps}")
-
     reverse_graph = compute_reverse_dependencies(dependency_graph)
-
     print(f"\n=== Граф обратных зависимостей [Этап 4] ===")
     for node, rev_deps in reverse_graph.items():
         print(f"{node} <- {rev_deps}")
@@ -162,8 +189,7 @@ def main():
     if ascii_tree_enabled:
         print(f"\n=== ASCII-дерево зависимостей [Этап 5] ===")
         print_ascii_tree(pkg_name, dependency_graph)
-    else:
-        print(f"\n[Этап 5] Визуализация: параметр ascii_tree выключен в config.yaml. Файл экспорта: {output_image}")
+    generate_graph_image(dependency_graph, output_image)
 
 
 if __name__ == "__main__":
