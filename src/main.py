@@ -104,6 +104,20 @@ def compute_reverse_dependencies(graph: dict) -> dict:
     return reverse_graph
 
 
+def print_ascii_tree(pkg: str, graph: dict, prefix: str = "", visited: set = None):
+    if visited is None:
+        visited = set()
+    print(f"{prefix}{pkg}")
+    if pkg in visited:
+        return
+    visited.add(pkg)
+    deps = graph.get(pkg, [])
+    for i, dep in enumerate(deps):
+        connector = "└── " if i == len(deps) - 1 else "├── "
+        extension = "    " if i == len(deps) - 1 else "│   "
+        print_ascii_tree(dep, graph, prefix + connector, visited.copy())
+
+
 def main():
     if len(sys.argv) < 2:
         print(
@@ -123,6 +137,8 @@ def main():
     repo_url = config.get("repository_url")
     test_mode = config.get("test_mode", False)
     max_depth = config.get("max_depth", 5)
+    ascii_tree_enabled = config.get("ascii_tree", False)
+    output_image = config.get("output_image", "graph.png")
 
     print(
         f"\n[Stage 3] Построение графа зависимостей для '{pkg_name}' (макс. глубина:"
@@ -139,9 +155,15 @@ def main():
 
     reverse_graph = compute_reverse_dependencies(dependency_graph)
 
-    print(f"\n=== Граф обратных зависимостей (реверсивный) [Этап 4] ===")
+    print(f"\n=== Граф обратных зависимостей [Этап 4] ===")
     for node, rev_deps in reverse_graph.items():
         print(f"{node} <- {rev_deps}")
+
+    if ascii_tree_enabled:
+        print(f"\n=== ASCII-дерево зависимостей [Этап 5] ===")
+        print_ascii_tree(pkg_name, dependency_graph)
+    else:
+        print(f"\n[Этап 5] Визуализация: параметр ascii_tree выключен в config.yaml. Файл экспорта: {output_image}")
 
 
 if __name__ == "__main__":

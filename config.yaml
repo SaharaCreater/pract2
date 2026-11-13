@@ -3,5 +3,5 @@ repository_url: "test_graph.txt"
 test_mode: true
 package_version: "1.0.0"
 output_image: "graph.png"
-ascii_tree: false
+ascii_tree: true
 max_depth: 3
