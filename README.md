@@ -1,6 +1,6 @@
 # Dependency Graph Visualizer (Variant 25)
 
-Инструмент командной строки на чистом Python для анализа и построения графа зависимостей пакетов Ubuntu (apt).
+Инструмент командной строки на чистом Python для анализа, построения графа зависимостей и поиска обратных зависимостей для пакетов Ubuntu (apt).
 
 ## Требования
 * Python 3.8+
@@ -23,7 +23,6 @@ package_version: "1.0.0"
 output_image: "graph.png"
 ascii_tree: false
 max_depth: 3
-
 ## Запуск
 bash
 ./run.sh

@@ -91,6 +91,19 @@ def build_graph_bfs_recursive(
     return full_graph
 
 
+def compute_reverse_dependencies(graph: dict) -> dict:
+    reverse_graph = {}
+    for pkg, deps in graph.items():
+        if pkg not in reverse_graph:
+            reverse_graph[pkg] = []
+        for dep in deps:
+            if dep not in reverse_graph:
+                reverse_graph[dep] = []
+            if pkg not in reverse_graph[dep]:
+                reverse_graph[dep].append(pkg)
+    return reverse_graph
+
+
 def main():
     if len(sys.argv) < 2:
         print(
@@ -102,7 +115,7 @@ def main():
     config_path = sys.argv[1]
     config = load_config(config_path)
 
-    print("=== Параметры конфигурации (Этап 1) ===")
+    print("=== Параметры конфигурации ===")
     for key, value in config.items():
         print(f"{key}: {value}")
 
@@ -120,9 +133,15 @@ def main():
         [pkg_name], repo_url, test_mode, max_depth, 1, set(), {}
     )
 
-    print(f"\n=== Граф зависимостей [Этап 3] ===")
+    print(f"\n=== Граф прямых зависимостей [Этап 3] ===")
     for node, deps in dependency_graph.items():
         print(f"{node} -> {deps}")
+
+    reverse_graph = compute_reverse_dependencies(dependency_graph)
+
+    print(f"\n=== Граф обратных зависимостей (реверсивный) [Этап 4] ===")
+    for node, rev_deps in reverse_graph.items():
+        print(f"{node} <- {rev_deps}")
 
 
 if __name__ == "__main__":
