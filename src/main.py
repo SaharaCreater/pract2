@@ -22,20 +22,12 @@ def load_config(path: str) -> dict:
     sys.exit(1)
 
 
-def validate_parameters(config: dict) -> None:
-  required_keys = [
-      "package_name",
-      "repository_url",
-      "test_mode",
-      "package_version",
-      "output_image",
-      "ascii_tree",
-      "max_depth",
-  ]
-
-  for key in required_keys:
-    if key not in config:
-      raise ValueError(f"Отсутствует обязательный параметр: '{key}'")
+def fetch_apt_dependencies(package_name: str, version: str, repo_url: str) -> list:
+  mock_dependencies = {
+      "requests": ["libc6 (>= 2.17)", "python3-urllib3", "python3-charset-normalizer"],
+      "default": ["libc6", "base-files"],
+  }
+  return mock_dependencies.get(package_name, ["libc6", "base-files"])
 
 
 def main():
@@ -49,15 +41,22 @@ def main():
   config_path = sys.argv[1]
   config = load_config(config_path)
 
-  try:
-    validate_parameters(config)
-  except ValueError as e:
-    print(f"Ошибка конфигурации: {e}", file=sys.stderr)
-    sys.exit(1)
-
   print("=== Параметры конфигурации (Этап 1) ===")
   for key, value in config.items():
     print(f"{key}: {value}")
+
+  pkg_name = config.get("package_name")
+  pkg_version = config.get("package_version")
+  repo_url = config.get("repository_url")
+
+  direct_dependencies = fetch_apt_dependencies(pkg_name, pkg_version, repo_url)
+
+  print(
+      f"\n=== Прямые зависимости пакета {pkg_name} (версия {pkg_version}) [Этап"
+      " 2] ==="
+  )
+  for dep in direct_dependencies:
+    print(f" - {dep}")
 
 
 if __name__ == "__main__":
